@@ -65,6 +65,21 @@ proc FindPattern_Internal SearchStart, SearchSize, Pattern, PatternSize
   ret
 endp
 
+; eax - Addr
+; edx - Protect
+; ecx - Size
+proc Mem_SetProtect
+  push esp ; OldProtect
+  push esp
+  push edx
+  push ecx
+  push eax
+  call [VirtualProtect]
+
+  pop eax
+  ret
+endp
+
 ; eax - Ptr
 ; edx - ValueL32
 ; ecx - ValueH32
@@ -80,20 +95,17 @@ proc Mem_WriteInt64
   mov edi, edx
   mov esi, ecx
 
-  push esp ; OldProtect
-  push esp
-  push PAGE_EXECUTE_READWRITE
-  push 8
-  push ebx
-  call VirtualProtect
+  mov edx, PAGE_EXECUTE_READWRITE
+  mov ecx, 8
+  call Mem_SetProtect
 
   mov dword [ebx], edi
   mov dword [ebx + 4], esi
 
-  push dword [esp]
-  push 8
-  push ebx
-  call VirtualProtect
+  xchg eax, edx
+  mov eax, ebx
+  mov ecx, 8
+  call Mem_SetProtect
 
   pop esi
   pop edi
@@ -217,22 +229,19 @@ proc Mem_InsertJump
   mov edi, eax
   mov esi, edx
 
-  push esp
-  push esp
-  push PAGE_EXECUTE_READWRITE
-  push 5
-  push edi
-  call VirtualProtect
+  mov edx, PAGE_EXECUTE_READWRITE
+  mov ecx, 5
+  call Mem_SetProtect
 
   sub esi, edi
   sub esi, 5
   mov byte [edi], bl
   mov dword [edi + 1], esi
 
-  push dword [esp]
-  push 5
-  push edi
-  call VirtualProtect
+  xchg edx, eax
+  mov eax, edi
+  mov ecx, 5
+  call Mem_SetProtect
 
   pop edi
   pop esi

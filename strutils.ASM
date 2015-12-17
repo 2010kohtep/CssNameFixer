@@ -5,7 +5,7 @@ proc StrComp
   push esi
   mov edi, edx
   mov esi, eax
-  mov ecx, -1
+  or ecx, -1
   xor eax, eax
   repne scasb
   not ecx

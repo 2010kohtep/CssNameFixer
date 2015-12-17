@@ -4,8 +4,6 @@ proc IsFileExists
   call [GetFileAttributes]
 
   test eax, INVALID_FILE_ATTRIBUTES
-
-
   sete al
   ret
 endp

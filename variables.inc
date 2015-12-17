@@ -1,4 +1,3 @@
-  sAbout	  db 'This module was created by 2010kohtep.',0
   sIniSectionName db 'steamclient',0
   sIniKeyName	  db 'PlayerName',0
   sIniFileName	  db '.\rev.ini',0

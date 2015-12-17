@@ -1,7 +1,6 @@
 format PE GUI 5.0 DLL
 
 include 'win32ax.inc'
-include 'macros.inc'
 
 entry DllEntryPoint
 
@@ -30,7 +29,7 @@ proc Cmd_NameN
   mov ecx, eax
   mov esi, ebx
   mov edi, [SteamclientName]
-  mov edx, edi ; for later
+  mov edx, edi ; save for later
 
   cld
   rep movsb
@@ -49,6 +48,7 @@ proc Cmd_NameN
 endp
 
 proc MainThread
+  call Mem_InsertCall
   call Find_Engine
   call Find_SteamclientName
   dec al
@@ -63,16 +63,10 @@ endp
 include 'memory.asm'
 include 'searchcode.asm'
 include 'strutils.asm'
-;include 'common.asm'
 
 section '.idata' import data readable writable
-  library kernel32, 'kernel32.dll',\
-	  user32,   'user32.dll',\
-	  advapi32, 'advapi32.dll'
+  library kernel32, 'kernel32.dll'
 
   include 'api/kernel32.inc'
-  include 'api/user32.inc'
-  include 'api/advapi32.inc'
-
 
 section '.reloc' fixups data readable discardable
