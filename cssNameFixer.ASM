@@ -48,7 +48,6 @@ proc Cmd_NameN
 endp
 
 proc MainThread
-  call Mem_InsertCall
   call Find_Engine
   call Find_SteamclientName
   dec al
