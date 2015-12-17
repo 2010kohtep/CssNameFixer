@@ -1,0 +1,258 @@
+; eax - Addr
+; edx - NewFunc
+proc Absolute
+  add eax, [edx]
+  add eax, 4
+  ret
+endp
+
+; eax - NewFunc
+; edx - Addr
+proc Relative
+  sub eax, edx
+  sub eax, 4
+  ret
+endp
+
+; eax - Address
+proc GetModuleSize
+  add eax, [eax + 3Ch]
+  mov eax, [eax + 50h]
+  ret
+endp
+
+proc FindPattern_Internal SearchStart, SearchSize, Pattern, PatternSize
+  push esi
+  push edi
+  push ebx
+
+  mov edi, [SearchStart]
+  mov edx, [SearchSize]
+  mov eax, [Pattern]
+  mov al, byte [eax]
+  inc [Pattern]
+  dec [PatternSize]
+
+.Next:
+  mov ecx, edx
+  repne scasb
+  jne .NotFound
+
+  mov edx, ecx
+  mov ecx, [PatternSize]
+  mov esi, [Pattern]
+  mov ebx, edi
+
+.Cont:
+  repe cmpsb
+  je .Found
+
+  cmp byte [esi - 1], 0FFh
+  je .Cont
+
+  mov edi, ebx
+  jmp .Next
+
+.NotFound:
+  mov ebx, 1
+
+.Found:
+  lea eax, [ebx - 1]
+
+  pop ebx
+  pop edi
+  pop esi
+  ret
+endp
+
+; eax - Ptr
+; edx - ValueL32
+; ecx - ValueH32
+proc Mem_WriteInt64
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  push edi
+  push esi
+
+  mov ebx, eax
+  mov edi, edx
+  mov esi, ecx
+
+  push esp ; OldProtect
+  push esp
+  push PAGE_EXECUTE_READWRITE
+  push 8
+  push ebx
+  call VirtualProtect
+
+  mov dword [ebx], edi
+  mov dword [ebx + 4], esi
+
+  push dword [esp]
+  push 8
+  push ebx
+  call VirtualProtect
+
+  pop esi
+  pop edi
+  pop ebx
+
+.Exit:
+  ret
+endp
+
+; eax - Ptr
+; edx - Value
+proc Mem_WriteLong
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  push edi
+
+  mov ebx, eax
+  mov edi, edx
+
+  push esp ; OldProtect
+  push esp
+  push PAGE_EXECUTE_READWRITE
+  push 4
+  push ebx
+  call VirtualProtect
+
+  mov dword [ebx], edi
+
+  push dword [esp]
+  push 4
+  push ebx
+  call VirtualProtect
+
+  pop edi
+  pop ebx
+
+.Exit:
+  ret
+endp
+
+; eax - Ptr
+; dx - Value
+proc Mem_WriteWord
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  push edi
+
+  mov ebx, eax
+  mov edi, edx
+
+  push esp ; OldProtect
+  push esp
+  push PAGE_EXECUTE_READWRITE
+  push 2
+  push ebx
+  call VirtualProtect
+
+  mov word [ebx], di
+
+  push dword [esp]
+  push 2
+  push ebx
+  call VirtualProtect
+
+  pop edi
+  pop ebx
+
+.Exit:
+  ret
+endp
+
+; eax - Ptr
+; dl - Value
+proc Mem_WriteByte
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  push edi
+
+  mov edi, eax
+  mov ebx, edx
+
+  push esp ; OldProtect
+  push esp
+  push PAGE_EXECUTE_READWRITE
+  push 1
+  push edi
+  call VirtualProtect
+
+  mov byte [edi], bl
+
+  push dword [esp]
+  push 1
+  push edi
+  call VirtualProtect
+
+  pop edi
+  pop ebx
+
+.Exit:
+  ret
+endp
+
+; eax - Ptr
+; edx - Jmp
+proc Mem_InsertJump
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  mov bl, 0E9h
+
+  push esi
+  push edi
+
+  mov edi, eax
+  mov esi, edx
+
+  push esp
+  push esp
+  push PAGE_EXECUTE_READWRITE
+  push 5
+  push edi
+  call VirtualProtect
+
+  sub esi, edi
+  sub esi, 5
+  mov byte [edi], bl
+  mov dword [edi + 1], esi
+
+  push dword [esp]
+  push 5
+  push edi
+  call VirtualProtect
+
+  pop edi
+  pop esi
+  pop ebx
+
+.Exit:
+  ret
+endp
+
+; eax - Ptr
+; edx - Call
+proc Mem_InsertCall
+  test eax, eax
+  jz .Exit
+
+  push ebx
+  mov bl, 0E8h
+
+  lea ecx, [Mem_InsertJump + 8]
+  jmp ecx
+.Exit:
+  ret
+endp
