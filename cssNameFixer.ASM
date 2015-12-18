@@ -7,7 +7,7 @@ entry DllEntryPoint
 section '.data' data readable writable
   include 'variables.inc'
 
-section '.code' code readable writable executable
+section '.code' code readable executable
 
 proc DllEntryPoint HinstDLL, fdwReason, lpvReserved
   cmp [fdwReason], DLL_PROCESS_ATTACH
