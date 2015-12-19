@@ -65,6 +65,100 @@ proc FindPattern_Internal SearchStart, SearchSize, Pattern, PatternSize
   ret
 endp
 
+; eax - SearchStart
+; edx - SearchSize
+; ecx - Address
+proc FindRefCallAddr
+  test eax, eax
+  jz .ExitE
+  test edx, edx
+  jz .Exit
+  test ecx, ecx
+  jz .Exit
+
+  push edi
+  push ebx
+
+  mov edi, eax
+  xchg edx, ecx
+  sub edx, 4
+  mov al, 0E8h
+
+.Cont:
+  repne scasb
+  jne .NotFound
+
+  mov ebx, edx
+  sub ebx, edi
+  cmp dword [edi], ebx
+  je .Found
+
+  add edi, 4
+  sub ecx, 4
+  jmp .Cont
+
+.NotFound:
+  mov edi, 1
+
+.Found:
+  lea eax, [edi - 1]
+
+  pop ebx
+  pop edi
+
+.ExitE:
+  xor eax, eax
+.Exit:
+  ret
+endp
+
+; eax - PModule
+; edx - oldFunc
+; ecx - newFunc
+proc HookEveryRefCall
+  test edx, edx
+  jz .Exit
+  test ecx, ecx
+  jz .Exit
+
+  push esi ; Base
+  push edi ; Size
+  push ebx ; OldFunc
+  push ebp ; NewFunc
+  push 0   ; Result
+
+  mov esi, [eax]
+  mov edi, [eax + 4]
+  mov ebx, edx
+  mov ebp, ecx
+
+.Loop:
+  mov eax, esi
+  mov edx, edi
+  mov ecx, ebx
+  call FindRefCallAddr
+  test eax, eax
+    jz .Break
+
+  mov edx, ebp
+  call Mem_InsertCall
+
+  inc dword [esp]
+  jmp .Loop
+
+.Break:
+  pop eax
+  pop ebp
+  pop ebx
+  pop edi
+  pop esi
+
+.Exit:
+  xor eax, eax
+.ExitE:
+  ret
+endp
+
 ; eax - Addr
 ; edx - Protect
 ; ecx - Size
@@ -127,19 +221,16 @@ proc Mem_WriteLong
   mov ebx, eax
   mov edi, edx
 
-  push esp ; OldProtect
-  push esp
-  push PAGE_EXECUTE_READWRITE
-  push 4
-  push ebx
-  call VirtualProtect
+  mov edx, PAGE_EXECUTE_READWRITE
+  mov ecx, 4
+  call Mem_SetProtect
 
   mov dword [ebx], edi
 
-  push dword [esp]
-  push 4
-  push ebx
-  call VirtualProtect
+  mov edx, eax
+  mov eax, ebx
+  mov ecx, 4
+  call Mem_SetProtect
 
   pop edi
   pop ebx
@@ -160,19 +251,16 @@ proc Mem_WriteWord
   mov ebx, eax
   mov edi, edx
 
-  push esp ; OldProtect
-  push esp
-  push PAGE_EXECUTE_READWRITE
-  push 2
-  push ebx
-  call VirtualProtect
+  mov edx, PAGE_EXECUTE_READWRITE
+  mov ecx, 2
+  call Mem_SetProtect
 
   mov word [ebx], di
 
-  push dword [esp]
-  push 2
-  push ebx
-  call VirtualProtect
+  mov edx, eax
+  mov eax, ebx
+  mov ecx, 2
+  call Mem_SetProtect
 
   pop edi
   pop ebx
